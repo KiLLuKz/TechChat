@@ -1,12 +1,11 @@
 import os
 from flask import Flask, request, jsonify
-import google.generativeai as genai
+from google import genai  # ใช้แบบใหม่
 
 app = Flask(__name__)
 
-# ดึง Key จากระบบ Render
-genai.configure(api_key=os.environ.get('GEMINI_KEY'))
-model = genai.GenerativeModel('gemini-1.5-flash')
+# ตั้งค่า Client ของ Gemini รุ่นใหม่
+client = genai.Client(api_key=os.environ.get('GEMINI_KEY'))
 
 @app.route('/')
 def home():
@@ -17,14 +16,17 @@ def webhook():
     req = request.get_json(silent=True, force=True)
     user_query = req.get('queryResult').get('queryText')
 
-    # ส่งให้ Gemini ตอบแบบ Small Talk
-    prompt = f"คุณคือ AI เพื่อนซี้ที่คุยสนุกและกวนนิดๆ ตอบคำถามนี้เป็นภาษาไทย: {user_query}"
-    
     try:
-        response = model.generate_content(prompt)
+        # วิธีเรียกใช้งาน Gemini แบบใหม่ล่าสุด
+        response = client.models.generate_content(
+            model="gemini-2.0-flash", # หรือรุ่นที่คุณต้องการใช้
+            contents=f"คุณคือ AI เพื่อนซี้ที่คุยสนุก ตอบคำถามนี้เป็นภาษาไทย: {user_query}"
+        )
         reply = response.text
-    except:
-        reply = "มึนตึ้บเลย ขออีกทีได้ป่าว"
+    except Exception as e:
+        # บรรทัดนี้จะช่วยให้เรารู้ว่า Error จริงๆ คืออะไรในหน้า Log
+        print(f"Detailed Error: {e}")
+        reply = "ขอโทษทีนะ เรามึนๆ นิดหน่อย ลองอีกทีนะ!"
 
     return jsonify({"fulfillmentText": reply})
 
